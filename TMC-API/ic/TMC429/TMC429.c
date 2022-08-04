@@ -17,6 +17,42 @@
 
 #include "TMC429.h"
 
+	// TMC429 library functions
+static void Init429(TMC429_RSRC* p);
+static void ReadWrite429(TMC429_RSRC* p, uint8_t *Read, uint8_t *Write);
+static void Write429Zero(TMC429_RSRC* p, uint8_t Address);
+static void Write429Bytes(TMC429_RSRC* p, uint8_t Address, uint8_t *Bytes);
+static void Write429Datagram(TMC429_RSRC* p, uint8_t Address, uint8_t HighByte, uint8_t MidByte, uint8_t LowByte);
+static void Write429Short(TMC429_RSRC* p, uint8_t Address, int32_t Value);	// write s16
+static void Write429Int(TMC429_RSRC* p, uint8_t Address, int32_t Value);	// write s32
+static uint8_t Read429Status(TMC429_RSRC* p);
+static uint8_t Read429Bytes(TMC429_RSRC* p, uint8_t Address, uint8_t *Bytes);
+static uint8_t Read429SingleByte(TMC429_RSRC* p, uint8_t Address, uint8_t Index);
+static int32_t Read429Short(TMC429_RSRC* p, uint8_t Address);
+static int32_t Read429Int(TMC429_RSRC* p, uint8_t Address);
+static void Set429RampMode(TMC429_RSRC* p, uint8_t Axis, uint8_t RampMode);
+static void Set429SwitchMode(TMC429_RSRC* p, uint8_t Axis, uint8_t SwitchMode);
+static uint8_t SetAMax(TMC429_RSRC* p, uint8_t Motor, uint32_t AMax);
+static void HardStop(TMC429_RSRC* p, uint32_t Motor);
+
+void setupDev_tmc429(
+	TMC429_DEV *dev,
+	const char* NAME,
+	SPI_HandleTypeDef* SPI_HANDLE,	// spi handle
+	const PIN_T *CS,				// spi select
+	const PIN_T *DRV_ENN_CFG6,		// driver enable
+	const PIN_T *SD_MODE,			//
+	const PIN_T *SWN_DIAG0,			//
+	const PIN_T *SWP_DIAG1,			//
+	const PIN_T *ENCA_DCIN_CFG5,	//
+	const PIN_T *ENCB_DCEN_CFG4,	//
+	const PIN_T *ENCN_DCO			//
+){
+
+
+
+}
+
 /***************************************************************//**
 	 \fn ReadWrite429(uint8_t *Read, uint8_t *Write)
 	 \brief 32 bit SPI communication with TMC429
@@ -27,12 +63,15 @@
 	 the TMC429. It sends a 32 bit SPI telegramme to the TMC429 and
 	 receives the 32 bit answer telegramme from the TMC429.
 ********************************************************************/
-void ReadWrite429(uint8_t *Read, uint8_t *Write)
+static void ReadWrite429(TMC429_RSRC* p, uint8_t *rxBuf, uint8_t *txBuf)
 {
-	Read[0] = ReadWriteSPI(SPI_DEV_TMC429, Write[0], FALSE);
-	Read[1] = ReadWriteSPI(SPI_DEV_TMC429, Write[1], FALSE);
-	Read[2] = ReadWriteSPI(SPI_DEV_TMC429, Write[2], FALSE);
-	Read[3] = ReadWriteSPI(SPI_DEV_TMC429, Write[3], TRUE);
+	while (HAL_SPI_GetState(p->SPI_HANDLE) != HAL_SPI_STATE_READY){}
+	/* nSS signal activation - low */
+	HAL_GPIO_WritePin(p->CS->GPIOx, p->CS->GPIO_Pin, GPIO_PIN_RESET);
+	/* SPI byte send */
+	HAL_SPI_TransmitReceive(p->SPI_HANDLE, txBuf, rxBuf, 5, 2);
+	/* nSS signal deactivation - high */
+	HAL_GPIO_WritePin(p->CS->GPIOx, p->CS->GPIO_Pin, GPIO_PIN_SET);
 }
 
 /***************************************************************//**
@@ -44,7 +83,7 @@ void ReadWrite429(uint8_t *Read, uint8_t *Write)
 
 	 This function writes an array of  three bytes to a TMC429 register.
 ********************************************************************/
-void Write429Bytes(uint8_t Address, uint8_t *Bytes)
+static void Write429Bytes(TMC429_RSRC* p, uint8_t Address, uint8_t *Bytes)
 {
 	uint8_t Write[4], Read[4];
 
@@ -52,7 +91,7 @@ void Write429Bytes(uint8_t Address, uint8_t *Bytes)
 	Write[1] = Bytes[0];
 	Write[2] = Bytes[1];
 	Write[3] = Bytes[2];
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 }
 
 /***************************************************************//**
@@ -65,7 +104,7 @@ void Write429Bytes(uint8_t Address, uint8_t *Bytes)
 
 	 This function write three bytes to a TMC429 register.
 ********************************************************************/
-void Write429Datagram(uint8_t Address, uint8_t HighByte, uint8_t MidByte, uint8_t LowByte)
+static void Write429Datagram(TMC429_RSRC* p, uint8_t Address, uint8_t HighByte, uint8_t MidByte, uint8_t LowByte)
 {
 	uint8_t Write[4], Read[4];
 
@@ -73,7 +112,7 @@ void Write429Datagram(uint8_t Address, uint8_t HighByte, uint8_t MidByte, uint8_
 	Write[1] = HighByte;
 	Write[2] = MidByte;
 	Write[3] = LowByte;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p,Read, Write);
 }
 
 /***************************************************************//**
@@ -84,7 +123,7 @@ void Write429Datagram(uint8_t Address, uint8_t HighByte, uint8_t MidByte, uint8_
 	 This function sets a TMC429 register to zero. This can be useful
 	 e.g. to stop a motor quickly.
 ********************************************************************/
-void Write429Zero(uint8_t Address)
+static void Write429Zero(TMC429_RSRC* p, uint8_t Address)
 {
 	uint8_t Write[4], Read[4];
 
@@ -92,7 +131,7 @@ void Write429Zero(uint8_t Address)
 	Write[1] = 0;
 	Write[2] = 0;
 	Write[3] = 0;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 }
 
 /***************************************************************//**
@@ -103,7 +142,7 @@ void Write429Zero(uint8_t Address)
 
 	 This function writes a 16 bit value to a TMC429 register.
 ********************************************************************/
-void Write429Short(uint8_t Address, int32_t Value)
+static void Write429Short(TMC429_RSRC* p, uint8_t Address, int32_t Value)
 {
 	uint8_t Write[4], Read[4];
 
@@ -111,7 +150,7 @@ void Write429Short(uint8_t Address, int32_t Value)
 	Write[1] = 0;
 	Write[2] = Value >> 8;
 	Write[3] = Value & 0xFF;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 }
 
 /***************************************************************//**
@@ -122,7 +161,7 @@ void Write429Short(uint8_t Address, int32_t Value)
 
 	 This function writes a 24 bit value to a TMC429 register.
 ********************************************************************/
-void Write429Int(uint8_t Address, int32_t Value)
+static void Write429Int(TMC429_RSRC* p, uint8_t Address, int32_t Value)
 {
 	uint8_t Write[4], Read[4];
 
@@ -130,7 +169,7 @@ void Write429Int(uint8_t Address, int32_t Value)
 	Write[1] = Value >> 16;
 	Write[2] = Value >> 8;
 	Write[3] = Value & 0xFF;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 }
 
 /***************************************************************//**
@@ -142,9 +181,9 @@ void Write429Int(uint8_t Address, int32_t Value)
 	 This functions reads just the status byte of the TMC429 using
 	 a single byte SPI access which makes this a little bit faster.
 ********************************************************************/
-uint8_t Read429Status(void)
+static uint8_t Read429Status(TMC429_RSRC* p)
 {
-	return ReadWriteSPI(SPI_DEV_TMC429, 0x01, TRUE);
+	//return ReadWriteSPI(p, SPI_DEV_TMC429, 0x01);
 }
 
 /***************************************************************//**
@@ -158,12 +197,12 @@ uint8_t Read429Status(void)
 	 This functions reads a TMC429 register and puts the result into
 	 an array of bytes. It also returns the TMC429 status bytes.
 ********************************************************************/
-uint8_t Read429Bytes(uint8_t Address, uint8_t *Bytes)
+static uint8_t Read429Bytes(TMC429_RSRC* p, uint8_t Address, uint8_t *Bytes)
 {
 	uint8_t Read[4], Write[4];
 
 	Write[0] = Address | TMC429_READ;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 
 	Bytes[0] = Read[1];
 	Bytes[1] = Read[2];
@@ -183,12 +222,12 @@ uint8_t Read429Bytes(uint8_t Address, uint8_t *Bytes)
 	 This functions reads a TMC429 register and returns the desired
 	 byte of that register.
 ********************************************************************/
-uint8_t Read429SingleByte(uint8_t Address, uint8_t Index)
+static uint8_t Read429SingleByte(TMC429_RSRC* p, uint8_t Address, uint8_t Index)
 {
 	uint8_t Read[4], Write[4];
 
 	Write[0] = Address | TMC429_READ;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 
 	return Read[Index+1];
 }
@@ -203,13 +242,13 @@ uint8_t Read429SingleByte(uint8_t Address, uint8_t Index)
 	 This functions reads a TMC429 12 bit register and sign-extends the
 	 register value to 32 bit.
 ********************************************************************/
-int32_t Read429Short(uint8_t Address)
+static int32_t Read429Short(TMC429_RSRC* p, uint8_t Address)
 {
 	uint8_t Read[4], Write[4];
 	int32_t Result;
 
 	Write[0] = Address | TMC429_READ;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 
 	Result = (Read[2]<<8) | Read[3];
 	if(Result & 0x00000800)
@@ -228,13 +267,13 @@ int32_t Read429Short(uint8_t Address)
 	 This functions reads a TMC429 24 bit register and sign-extends the
 	 register value to 32 bit.
 ********************************************************************/
-int32_t Read429Int(uint8_t Address)
+static int32_t Read429Int(TMC429_RSRC* p, uint8_t Address)
 {
 	uint8_t Read[4], Write[4];
 	int32_t Result;
 
 	Write[0] = Address | TMC429_READ;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 
 	Result = (Read[1]<<16) | (Read[2]<<8) | (Read[3]);
 	if(Result & 0x00800000)
@@ -252,18 +291,18 @@ int32_t Read429Int(uint8_t Address)
 	 This functions changes the ramping mode of a motor in the TMC429.
 	 It is some TMC429 register bit twiddling.
 ********************************************************************/
-void Set429RampMode(uint8_t Axis, uint8_t RampMode)
+static void Set429RampMode(TMC429_RSRC* p, uint8_t Axis, uint8_t RampMode)
 {
 	uint8_t Write[4], Read[4];
 
 	Write[0] = TMC429_IDX_REFCONF_RM(Axis)|TMC429_READ;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 
 	Write[0] = TMC429_IDX_REFCONF_RM(Axis);
 	Write[1] = Read[1];
 	Write[2] = Read[2];
 	Write[3] = RampMode;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 }
 
 /***************************************************************//**
@@ -275,18 +314,18 @@ void Set429RampMode(uint8_t Axis, uint8_t RampMode)
 	 This functions changes the end switch mode of a motor in the TMC429.
 	 It is some TMC429 register bit twiddling.
 ********************************************************************/
-void Set429SwitchMode(uint8_t Axis, uint8_t SwitchMode)
+static void Set429SwitchMode(TMC429_RSRC* p, uint8_t Axis, uint8_t SwitchMode)
 {
 	uint8_t Write[4], Read[4];
 
 	Write[0] = TMC429_IDX_REFCONF_RM(Axis) | TMC429_READ;
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 
 	Write[0] = TMC429_IDX_REFCONF_RM(Axis);
 	Write[1] = Read[1];
 	Write[2] = SwitchMode;
 	Write[3] = Read[3];
-	ReadWrite429(Read, Write);
+	ReadWrite429(p, Read, Write);
 }
 
 /***************************************************************//**
@@ -300,7 +339,7 @@ void Set429SwitchMode(uint8_t Axis, uint8_t SwitchMode)
 	 (please see the TMC429 data sheet for more info about PMUL and PDIV
 	 values).
 ********************************************************************/
-uint8_t SetAMax(uint8_t Motor, uint32_t AMax)
+static uint8_t SetAMax(TMC429_RSRC* rsrc, u8 Motor, uint32_t AMax)
 {
 	int32_t pm, pd;
 	float p, p_reduced;
@@ -310,7 +349,7 @@ uint8_t SetAMax(uint8_t Motor, uint32_t AMax)
 	uint8_t Data[3];
 
 	AMax &= 0x000007FF;
-	Read429Bytes(TMC429_IDX_PULSEDIV_RAMPDIV(Motor), Data);
+	Read429Bytes(rsrc, TMC429_IDX_PULSEDIV_RAMPDIV(Motor), Data);
 	PulseRampDiv = Data[1];
 	pulse_div = PulseRampDiv >> 4;
 	ramp_div = PulseRampDiv & 0x0F;
@@ -341,8 +380,8 @@ uint8_t SetAMax(uint8_t Motor, uint32_t AMax)
 	Data[0] = 0;
 	Data[1] = (uint8_t) pm;
 	Data[2] = (uint8_t) pd;
-	Write429Bytes(TMC429_IDX_PMUL_PDIV(Motor), Data);
-	Write429Short(TMC429_IDX_AMAX(Motor), AMax);
+	Write429Bytes(rsrc, TMC429_IDX_PMUL_PDIV(Motor), Data);
+	Write429Short(rsrc, TMC429_IDX_AMAX(Motor), AMax);
 
 	return 0;
 }
@@ -356,11 +395,11 @@ uint8_t SetAMax(uint8_t Motor, uint32_t AMax)
 	 to velocity mode and then zeroing the V_TARGT and V_ACTUAL registers
 	 of that axis.
 ********************************************************************/
-void HardStop(uint32_t Motor)
+static void HardStop(TMC429_RSRC* p, uint32_t Motor)
 {
-	Set429RampMode(Motor, TMC429_RM_VELOCITY);
-	Write429Zero(TMC429_IDX_VTARGET(Motor));
-	Write429Zero(TMC429_IDX_VACTUAL(Motor));
+	Set429RampMode(p, Motor, TMC429_RM_VELOCITY);
+	Write429Zero(p, TMC429_IDX_VTARGET(Motor));
+	Write429Zero(p, TMC429_IDX_VACTUAL(Motor));
 }
 
 /***************************************************************//**
@@ -370,26 +409,27 @@ void HardStop(uint32_t Motor)
 	 This function does all necessary initializations of the TMC429
 	 to operate in step/direction mode.
 ********************************************************************/
-void Init429(void)
+static void Init429(TMC429_RSRC* p)
 {
 	uint8_t motor;
 	for(motor = 0; motor < 3; motor++)
 	{
 		uint32_t addr;
-		for(addr = 0; addr <= TMC429_IDX_XLATCHED; addr++)
-			Write429Zero(addr | TMC429_MOTOR(motor));
+		for(addr = 0; addr <= TMC429_IDX_XLATCHED(motor); addr++)
+			Write429Zero(p, addr | TMC429_MOTOR(motor));
 	}
 
-	Write429Int(TMC429_IDX_IF_CONFIG_429, TMC429_IFCONF_EN_SD | TMC429_IFCONF_EN_REFR | TMC429_IFCONF_SDO_INT);
-	Write429Datagram(TMC429_IDX_SMGP, 0x00, 0x00, 0x02);
+	Write429Int(p, TMC429_IDX_IF_CONFIG_429, TMC429_IFCONF_EN_SD | TMC429_IFCONF_EN_REFR | TMC429_IFCONF_SDO_INT);
+	Write429Datagram(p, TMC429_IDX_SMGP, 0x00, 0x00, 0x02);
 
 	for(motor = 0; motor < 3; motor++)
 	{
-		Write429Datagram(TMC429_IDX_PULSEDIV_RAMPDIV(motor), 0x00, 0x37, 0x06);
-		Write429Datagram(TMC429_IDX_REFCONF_RM(motor), 0x00, TMC429_NO_REF, 0x00);
-		Write429Short(TMC429_IDX_VMIN(motor), 1);
+		Write429Datagram(p, TMC429_IDX_PULSEDIV_RAMPDIV(motor), 0x00, 0x37, 0x06);
+		Write429Datagram(p, TMC429_IDX_REFCONF_RM(motor), 0x00, TMC429_NO_REF, 0x00);
+		Write429Short(p, TMC429_IDX_VMIN(motor), 1);
 
-		Write429Int(TMC429_IDX_VMAX(motor), 1000);
-		SetAMax(motor, 1000);
+		Write429Int(p, TMC429_IDX_VMAX(motor), 1000);
+		SetAMax(p, motor, 1000);
 	}
 }
+

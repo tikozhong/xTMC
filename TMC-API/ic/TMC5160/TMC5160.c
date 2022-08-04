@@ -301,7 +301,6 @@ static int tmc5160_readInt(TMC5160_RSRC *rsrc, uint8_t address)
 	return value;
 }
 
-
 static void tmc5160_initConfig(TMC5160_RSRC *rsrc)
 {
 	TMC5160TypeDef *tmc5160 = & rsrc->TMC5160;
