@@ -39,19 +39,585 @@ void setupDev_tmc429(
 	TMC429_DEV *dev,
 	const char* NAME,
 	SPI_HandleTypeDef* SPI_HANDLE,	// spi handle
-	const PIN_T *CS,				// spi select
-	const PIN_T *DRV_ENN_CFG6,		// driver enable
-	const PIN_T *SD_MODE,			//
-	const PIN_T *SWN_DIAG0,			//
-	const PIN_T *SWP_DIAG1,			//
-	const PIN_T *ENCA_DCIN_CFG5,	//
-	const PIN_T *ENCB_DCEN_CFG4,	//
-	const PIN_T *ENCN_DCO			//
+	const PIN_T *CS				// spi select
 ){
 
 
-
 }
+
+
+//
+//
+///******************************
+//   Funktion: RotateRight()
+//
+//   Zweck: TMCL-Befehl ROR
+// *******************************/
+//static void RotateRight(TMC429_RSRC* p, u8 axisIndx)
+//{
+//  if(axisIndx < TMC429_MOTOR_COUNT)
+//  {
+//	Set429RampMode(p, axisIndx, RM_VELOCITY);
+//	Write428Short(axisIndx<<5|IDX_VMAX, 2047);
+//	Write428Short(axisIndx<<5|IDX_VTARGET, ActualCommand.Value.Int32);
+////    Set428RampMode(ActualCommand.Motor, RM_VELOCITY);
+////    Write428Short(ActualCommand.Motor<<5|IDX_VMAX, 2047);
+////    Write428Short(ActualCommand.Motor<<5|IDX_VTARGET, ActualCommand.Value.Int32);
+//  }
+//}
+//
+//
+///******************************
+//   Funktion: RotateLeft()
+//
+//   Zweck: TMCL-Befehl ROL
+// *******************************/
+//static void RotateLeft(void)
+//{
+//  if(ActualCommand.Motor<N_O_MOTORS)
+//  {
+//    Set428RampMode(ActualCommand.Motor, RM_VELOCITY);
+//    Write428Short(ActualCommand.Motor<<5|IDX_VMAX, 2047);
+//    Write428Short(ActualCommand.Motor<<5|IDX_VTARGET, -ActualCommand.Value.Int32);
+//  }
+//}
+//
+//
+///******************************
+//   Funktion: MotorStop()
+//
+//   Zweck: TMCL-Befehl MST
+// *******************************/
+//static void MotorStop(void)
+//{
+//  if(ActualCommand.Motor<N_O_MOTORS)
+//  {
+//    Set428RampMode(ActualCommand.Motor, RM_VELOCITY);
+//    Write428Short(ActualCommand.Motor<<5|IDX_VTARGET, 0);
+//  }
+//}
+//
+//
+///******************************
+//   Funktion: MoveToPosition()
+//
+//   Zweck: TMCL-Befehl MVP
+// *******************************/
+//static void MoveToPosition(void)
+//{
+//  UINT NewPosition;
+//
+//  if(ActualCommand.Motor>N_O_MOTORS)
+//  {
+//    ActualReply.Status=REPLY_INVALID_VALUE;
+//    return;
+//  }
+//
+//  if((ActualCommand.Type==MVP_ABS || ActualCommand.Type==MVP_REL) && ActualCommand.Motor>=N_O_MOTORS)
+//  {
+//    ActualReply.Status=REPLY_INVALID_VALUE;
+//    return;
+//  }
+//
+//  switch(ActualCommand.Type)
+//  {
+//    case MVP_ABS:
+//      CheckVAModified(ActualCommand.Motor);
+//      Write428Int(ActualCommand.Motor<<5|IDX_XTARGET, ActualCommand.Value.Int32);
+//      Set428RampMode(ActualCommand.Motor, RM_RAMP);
+//      break;
+//
+//    case MVP_REL:
+//      CheckVAModified(ActualCommand.Motor);
+//      NewPosition=Read428Int(ActualCommand.Motor<<5|IDX_XACTUAL)+ActualCommand.Value.Int32;
+//      Write428Int(ActualCommand.Motor<<5|IDX_XTARGET, NewPosition);
+//      Set428RampMode(ActualCommand.Motor, RM_RAMP);
+//      ActualReply.Value.Int32=NewPosition;
+//      break;
+//
+//    default:
+//      ActualReply.Status=REPLY_WRONG_TYPE;
+//      break;
+//  }
+//}
+//
+//
+///******************************
+//   Funktion: SetAxisParameter
+//
+//   Zweck: TMCL-Befehl SAP
+// *******************************/
+//static void SetAxisParameter(void)
+//{
+//  UCHAR Read[4];
+//
+//  if(ActualCommand.Motor>=N_O_MOTORS)
+//  {
+//    ActualReply.Status=REPLY_INVALID_VALUE;
+//    return;
+//  }
+//
+//  switch(ActualCommand.Type)
+//  {
+//    case 0:
+//      Write428Int(ActualCommand.Motor<<5|IDX_XTARGET, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 1:
+//      Write428Int(ActualCommand.Motor<<5|IDX_XACTUAL, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 2:
+//      Write428Short(ActualCommand.Motor<<5|IDX_VTARGET, ActualCommand.Value.Int32);
+//      Write428Short(ActualCommand.Motor<<5|IDX_VMAX, abs(ActualCommand.Value.Int32));
+//      VAModified[ActualCommand.Motor]=TRUE;
+//      break;
+//
+//    case 3:
+//      Write428Short(ActualCommand.Motor<<5|IDX_VACTUAL, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 4:
+//      Write428Short(ActualCommand.Motor<<5|IDX_VMAX, ActualCommand.Value.Int32);
+//      VMax[ActualCommand.Motor]=ActualCommand.Value.Int32;
+//      VAModified[ActualCommand.Motor]=FALSE;
+//      break;
+//
+//    case 5:
+//      SetAMax(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      AMax[ActualCommand.Motor]=ActualCommand.Value.Int32;
+//      VAModified[ActualCommand.Motor]=FALSE;
+//      break;
+//
+//    case 6:
+//      Set262StallGuardCurrentScale(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 12:
+//      Read428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      if(ActualCommand.Value.Int32!=0)
+//        Read[1]|=0x02;
+//      else
+//        Read[1]&= ~0x02;
+//      Write428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      break;
+//
+//    case 13:
+//      Read428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      if(ActualCommand.Value.Int32!=0)
+//        Read[1]|=0x01;
+//      else
+//        Read[1]&= ~0x01;
+//      Write428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      break;
+//
+//    case 130:
+//      Write428Short(ActualCommand.Motor<<5|IDX_VMIN, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 135:
+//      Write428Short(ActualCommand.Motor<<5|IDX_AACTUAL, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 138:
+//      Read428Bytes(ActualCommand.Motor<<5|IDX_REFCONF_RM, Read);
+//      Read[2]=ActualCommand.Value.Byte[0];
+//      Write428Bytes(ActualCommand.Motor<<5|IDX_REFCONF_RM, Read);
+//      break;
+//
+//    case 140:
+//      Set262StepDirMStepRes(ActualCommand.Motor, 8-ActualCommand.Value.Byte[0]);
+//      break;
+//
+//    case 141:
+//      Write428Short(ActualCommand.Motor<<5|IDX_DX_REFTOLERANCE, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 149:
+//      Read428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      if(ActualCommand.Value.Int32!=0)
+//        Read[1]|=0x04;
+//      else
+//        Read[1]&= ~0x04;
+//      Write428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      break;
+//
+//    case 153:
+//      Read428Bytes(ActualCommand.Motor<<5|IDX_PULSEDIV_RAMPDIV, Read);
+//      Read[1]=(Read[1] & 0xf0) | (ActualCommand.Value.Byte[0] & 0x0f);
+//      Write428Bytes(ActualCommand.Motor<<5|IDX_PULSEDIV_RAMPDIV, Read);
+//      break;
+//
+//    case 154:
+//      Read428Bytes(ActualCommand.Motor<<5|IDX_PULSEDIV_RAMPDIV, Read);
+//      Read[1]=(Read[1] & 0x0f) | (ActualCommand.Value.Byte[0]<<4);
+//      Write428Bytes(ActualCommand.Motor<<5|IDX_PULSEDIV_RAMPDIV, Read);
+//      break;
+//
+//    case 160:
+//      Set262StepDirInterpolation(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 161:
+//      Set262StepDirDoubleEdge(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 162:
+//      Set262ChopperBlankTime(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 163:
+//      Set262ChopperMode(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 164:
+//      Set262ChopperHysteresisDecay(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 165:
+//      Set262ChopperHysteresisEnd(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 166:
+//      Set262ChopperHysteresisStart(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 167:
+//      Set262ChopperTOff(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 168:
+//      Set262SmartEnergyIMin(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 169:
+//      Set262SmartEnergyDownStep(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 170:
+//      Set262SmartEnergyStallLevelMax(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 171:
+//      Set262SmartEnergyUpStep(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 172:
+//      Set262SmartEnergyStallLevelMin(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 173:
+//      Set262StallGuardFilter(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 174:
+//      Set262StallGuardThreshold(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 175:
+//      Set262DriverSlopeHighSide(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 176:
+//      Set262DriverSlopeLowSide(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 177:
+//      Set262DriverDisableProtection(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 178:
+//      Set262DriverProtectionTimer(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 179:
+//      Set262DriverVSenseScale(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 183:
+//      Set262DriverStepDirectionOff(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 184:
+//      Set262ChopperRandomTOff(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 185:
+//      Set262DriverTestMode(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 209:
+//      WriteEncoder(ActualCommand.Motor, ActualCommand.Value.Int32);
+//      break;
+//
+//    case 210:
+//      SetEncoderPrescaler(ActualCommand.Motor, ActualCommand.Value.Int32>>5, ActualCommand.Value.Byte[0] & 0x1f);
+//      break;
+//      break;
+//
+//    default:
+//      ActualReply.Status=REPLY_WRONG_TYPE;
+//      break;
+//  }
+//}
+//
+//
+///******************************
+//   Funktion: GetAxisParameter()
+//
+//   Zweck: TMCL-Befehl GAP
+// *******************************/
+//static void GetAxisParameter(void)
+//{
+//  UCHAR Read[4];
+//
+//  if(ActualCommand.Motor>=N_O_MOTORS)
+//  {
+//    ActualReply.Status=REPLY_INVALID_VALUE;
+//    return;
+//  }
+//
+//  switch(ActualCommand.Type)
+//  {
+//    case 0:
+//      ActualReply.Value.Int32=Read428Int(ActualCommand.Motor<<5|IDX_XTARGET);
+//      break;
+//
+//    case 1:
+//      ActualReply.Value.Int32=Read428Int(ActualCommand.Motor<<5|IDX_XACTUAL);
+//      break;
+//
+//    case 2:
+//      ActualReply.Value.Int32=Read428Short(ActualCommand.Motor<<5|IDX_VTARGET);
+//      break;
+//
+//    case 3:
+//      ActualReply.Value.Int32=Read428Short(ActualCommand.Motor<<5|IDX_VACTUAL);
+//      break;
+//
+//    case 4:
+//      ActualReply.Value.Int32=VMax[ActualCommand.Motor];
+//      break;
+//
+//    case 5:
+//      ActualReply.Value.Int32=AMax[ActualCommand.Motor];
+//      break;
+//
+//    case 6:
+//      ActualReply.Value.Int32=Get262StallGuardCurrentScale(ActualCommand.Motor);
+//      break;
+//
+//    case 8:
+//      ActualReply.Value.Int32=(Read428Status() & (1<<(ActualCommand.Motor*2))) ? 1:0;
+//      break;
+//
+//    case 12:
+//      Read428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      ActualReply.Value.Int32=(Read[1] & 0x02) ? 1:0;
+//      break;
+//
+//    case 13:
+//      Read428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      ActualReply.Value.Int32=(Read[1] & 0x01) ? 1:0;
+//      break;
+//
+//    case 9:
+//    case 11:
+//      Read428Bytes(IDX_REF_SWITCHES, Read);  //linker Schalter
+//      ActualReply.Value.Int32=(Read[2] & (0x02<<ActualCommand.Motor*2)) ? 1:0;
+//      break;
+//
+//    case 10:
+//      Read428Bytes(IDX_REF_SWITCHES, Read);  //rechter Schalter
+//      ActualReply.Value.Int32=(Read[2] & (0x01<<ActualCommand.Motor*2)) ? 1:0;
+//      break;
+//
+//    case 130:
+//      ActualReply.Value.Int32=Read428Short(ActualCommand.Motor<<5|IDX_VMIN);
+//      break;
+//
+//    case 135:
+//      ActualReply.Value.Int32=Read428Short(ActualCommand.Motor<<5|IDX_AACTUAL);
+//      break;
+//
+//    case 138:
+//      Read428Bytes(ActualCommand.Motor<<5|IDX_REFCONF_RM, Read);
+//      ActualReply.Value.Int32=Read[2];
+//      break;
+//
+//    case 140:
+//      ActualReply.Value.Int32=8-Get262StepDirMStepRes(ActualCommand.Motor);
+//      break;
+//
+//    case 141:
+//      ActualReply.Value.Int32=Read428Short(ActualCommand.Motor<<5|IDX_DX_REFTOLERANCE);
+//      break;
+//
+//    case 149:
+//      Read428Bytes(IDX_REFCONF_RM|ActualCommand.Motor<<5, Read);
+//      ActualReply.Value.Int32=(Read[1] & 0x04) ? 1:0;
+//      break;
+//
+//    case 153:
+//      Read428Bytes(ActualCommand.Motor<<5|IDX_PULSEDIV_RAMPDIV, Read);
+//      ActualReply.Value.Int32=Read[1] & 0x0f;
+//      break;
+//
+//    case 154:
+//      Read428Bytes(ActualCommand.Motor<<5|IDX_PULSEDIV_RAMPDIV, Read);
+//      ActualReply.Value.Int32=Read[1] >> 4;
+//      break;
+//
+//    case 206:
+//      ActualReply.Value.Int32=StallLevel[ActualCommand.Motor];
+//      break;
+//
+//    case 207:
+//      switch(ActualCommand.Motor)
+//      {
+//        case 0:
+//          ActualReply.Value.Int32=(AT91C_BASE_PIOB->PIO_PDSR & BIT9) ? 1:0;
+//          break;
+//
+//        case 1:
+//          ActualReply.Value.Int32=(AT91C_BASE_PIOB->PIO_PDSR & BIT8) ? 1:0;
+//          break;
+//
+//        case 2:
+//          ActualReply.Value.Int32=(AT91C_BASE_PIOB->PIO_PDSR & BIT14) ? 1:0;
+//          break;
+//      }
+//      break;
+//
+//    case 208:
+//      ActualReply.Value.Int32=DriverFlags[ActualCommand.Motor];
+//      break;
+//
+//    case 160:
+//      ActualReply.Value.Int32=Get262StepDirInterpolation(ActualCommand.Motor);
+//      break;
+//
+//    case 161:
+//      ActualReply.Value.Int32=Get262StepDirDoubleEdge(ActualCommand.Motor);
+//      break;
+//
+//    case 162:
+//      ActualReply.Value.Int32=Get262ChopperBlankTime(ActualCommand.Motor);
+//      break;
+//
+//    case 163:
+//      ActualReply.Value.Int32=Get262ChopperMode(ActualCommand.Motor);
+//      break;
+//
+//    case 164:
+//      ActualReply.Value.Int32=Get262ChopperHysteresisDecay(ActualCommand.Motor);
+//      break;
+//
+//    case 165:
+//      ActualReply.Value.Int32=Get262ChopperHysteresisEnd(ActualCommand.Motor);
+//      break;
+//
+//    case 166:
+//      ActualReply.Value.Int32=Get262ChopperHysteresisStart(ActualCommand.Motor);
+//      break;
+//
+//    case 167:
+//      ActualReply.Value.Int32=Get262ChopperTOff(ActualCommand.Motor);
+//      break;
+//
+//    case 168:
+//      ActualReply.Value.Int32=Get262SmartEnergyIMin(ActualCommand.Motor);
+//      break;
+//
+//    case 169:
+//      ActualReply.Value.Int32=Get262SmartEnergyDownStep(ActualCommand.Motor);
+//      break;
+//
+//    case 170:
+//      ActualReply.Value.Int32=Get262SmartEnergyStallLevelMax(ActualCommand.Motor);
+//      break;
+//
+//    case 171:
+//      ActualReply.Value.Int32=Get262SmartEnergyUpStep(ActualCommand.Motor);
+//      break;
+//
+//    case 172:
+//      ActualReply.Value.Int32=Get262SmartEnergyStallLevelMin(ActualCommand.Motor);
+//      break;
+//
+//    case 173:
+//      ActualReply.Value.Int32=Get262StallGuardFilter(ActualCommand.Motor);
+//      break;
+//
+//    case 174:
+//      ActualReply.Value.Int32=Get262StallGuardThreshold(ActualCommand.Motor);
+//      break;
+//
+//    case 175:
+//      ActualReply.Value.Int32=Get262DriverSlopeHighSide(ActualCommand.Motor);
+//      break;
+//
+//    case 176:
+//      ActualReply.Value.Int32=Get262DriverSlopeLowSide(ActualCommand.Motor);
+//      break;
+//
+//    case 177:
+//      ActualReply.Value.Int32=Get262DriverDisableProtection(ActualCommand.Motor);
+//      break;
+//
+//    case 178:
+//      ActualReply.Value.Int32=Get262DriverProtectionTimer(ActualCommand.Motor);
+//      break;
+//
+//    case 179:
+//      ActualReply.Value.Int32=Get262DriverVSenseScale(ActualCommand.Motor);
+//      break;
+//
+//    case 180:
+//      ActualReply.Value.Int32=SmartEnergy[ActualCommand.Motor];
+//      break;
+//
+//    case 182:
+//      if(IS_SD_MODE_SELECTED() || ActualCommand.Motor!=0)
+//      {
+//        if(Get262DriverReadSelect(ActualCommand.Motor)!=TMC262_RB_MSTEP)
+//          Set262DriverReadSelect(ActualCommand.Motor, TMC262_RB_MSTEP);
+//        ActualReply.Value.Int32=0;
+//        Read262State(ActualCommand.Motor, &ActualReply.Value.Byte[1], &ActualReply.Value.Byte[0], NULL, NULL, NULL);
+//      }
+//      else
+//      {
+//        ActualReply.Value.Byte[1]=0x00;
+//        ActualReply.Value.Byte[0]=0x00;
+//      }
+//      break;
+//
+//    case 183:
+//      ActualReply.Value.Int32=Get262DriverStepDirectionOff(ActualCommand.Motor);
+//      break;
+//
+//    case 184:
+//      ActualReply.Value.Int32=Get262ChopperRandomTOff(ActualCommand.Motor);
+//      break;
+//
+//    case 209:
+//      ActualReply.Value.Int32=ReadEncoder(ActualCommand.Motor);
+//      break;
+//
+//    default:
+//      ActualReply.Status=REPLY_WRONG_TYPE;
+//      break;
+//  }
+//}
+
+
+
+
+
+
+
+
+
 
 /***************************************************************//**
 	 \fn ReadWrite429(uint8_t *Read, uint8_t *Write)
@@ -184,6 +750,7 @@ static void Write429Int(TMC429_RSRC* p, uint8_t Address, int32_t Value)
 static uint8_t Read429Status(TMC429_RSRC* p)
 {
 	//return ReadWriteSPI(p, SPI_DEV_TMC429, 0x01);
+	return 0;
 }
 
 /***************************************************************//**

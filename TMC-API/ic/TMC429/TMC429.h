@@ -12,6 +12,8 @@
 #include "misc.h"
 
 #define TMC429_REGISTER_COUNT 128
+#define TMC429_MOTOR_COUNT 3
+
 
 typedef struct
 {
@@ -23,16 +25,6 @@ typedef struct
 
 typedef struct{
 	char name[DEV_NAME_LEN];
-	const PIN_T *REFL_UC;
-	const PIN_T *REFR_UC;
-	const PIN_T *DRV_ENN_CFG6;
-	const PIN_T *ENCA_DCIN_CFG5;
-	const PIN_T *ENCB_DCEN_CFG4;
-	const PIN_T *ENCN_DCO;
-	const PIN_T *SD_MODE;
-	const PIN_T *SPI_MODE;
-	const PIN_T *SWN_DIAG0;
-	const PIN_T *SWP_DIAG1;
 	const PIN_T *CS;
 	SPI_HandleTypeDef* SPI_HANDLE;
 
@@ -77,14 +69,7 @@ void setupDev_tmc429(
 		TMC429_DEV *dev,
 	const char* NAME,
 	SPI_HandleTypeDef* SPI_HANDLE,	// spi handle
-	const PIN_T *CS,				// spi select
-	const PIN_T *DRV_ENN_CFG6,		// driver enable
-	const PIN_T *SD_MODE,			//
-	const PIN_T *SWN_DIAG0,			//
-	const PIN_T *SWP_DIAG1,			//
-	const PIN_T *ENCA_DCIN_CFG5,	//
-	const PIN_T *ENCB_DCEN_CFG4,	//
-	const PIN_T *ENCN_DCO			//
+	const PIN_T *CS				// spi select
 );
 
 #endif /* TMC_IC_TMC429_H_ */
